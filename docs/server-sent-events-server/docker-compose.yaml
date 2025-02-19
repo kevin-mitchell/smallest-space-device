@@ -1,0 +1,11 @@
+services:
+  server-sent-event-example:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: server-sent-event-image
+    ports:
+      - "1334:1334"
+    environment:
+      - NODE_ENV=production
+    command: ["node", "index.js"]
