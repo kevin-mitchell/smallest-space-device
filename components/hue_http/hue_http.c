@@ -207,7 +207,7 @@ void smallest_space_get_remote_config(char *settings)
         .event_handler = on_client_data,
         .user_data = &http_data};
     esp_http_client_handle_t client = esp_http_client_init(&esp_http_client_config);
-    esp_http_client_set_header(client, "Contnet-Type", "application/json");
+    esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_err_t err = esp_http_client_perform(client);
     if (err != ESP_OK)
     {
@@ -215,7 +215,15 @@ void smallest_space_get_remote_config(char *settings)
         return;
     }
 
+    char previousValue = settings[0];
+    ESP_LOGI(TAG, "Previous value: %c", previousValue);
+    ESP_LOGI(TAG, "Control config before parsing: %d - %d", previousValue, settings[0]);
     parse_smallest_space_remote_config_response(http_data.buffer, settings);
+    ESP_LOGI(TAG, "Control values after before parsing: %d - %d", previousValue, settings[0]);
+    if (previousValue != settings[0] && settings[0] == '1')
+    {
+        ESP_LOGI(TAG, "Control Switching to Enabled: %d", settings[0]);
+    }
 
     esp_http_client_cleanup(client);
 
@@ -262,7 +270,6 @@ void hue_update_room_light(char *room_id, uint8_t target_state, char *hue_base_s
 
     esp_http_client_set_url(hue_put_client, url);
     esp_http_client_set_post_field(hue_put_client, post_data, strlen(post_data));
-
     esp_http_client_set_header(hue_put_client, "hue-application-key", hue_base_station_api_key);
     esp_http_client_set_header(hue_put_client, "Content-Type", "application/json");
 
@@ -273,15 +280,28 @@ void hue_update_room_light(char *room_id, uint8_t target_state, char *hue_base_s
 
     if (err != ESP_OK)
     {
+        ESP_LOGE(TAG, "First request failed when updating lights with this error name: %s", esp_err_to_name(err));
+
+        esp_http_client_cleanup(hue_put_client);
+        // todo: if cleanup and recreate doesn't work perhaps consider adding a small delay?
+        // vTaskDelay(pdMS_TO_TICKS(300));
         esp_http_client_config_t esp_http_hue_put_client_config = {
             .url = url,
             .method = HTTP_METHOD_PUT,
             .keep_alive_enable = true,
             .keep_alive_idle = 10};
         hue_put_client = esp_http_client_init(&esp_http_hue_put_client_config);
+        esp_http_client_set_url(hue_put_client, url);
+        esp_http_client_set_post_field(hue_put_client, post_data, strlen(post_data));
+        esp_http_client_set_header(hue_put_client, "hue-application-key", hue_base_station_api_key);
+        esp_http_client_set_header(hue_put_client, "Content-Type", "application/json");
         err = esp_http_client_perform(hue_put_client);
 
-        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Second HTTP GET request failed: %s", esp_err_to_name(err));
+        }
+
         return;
     }
 

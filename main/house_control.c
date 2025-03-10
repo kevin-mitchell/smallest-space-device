@@ -79,12 +79,12 @@ void get_house_switch_statuses_struct(uint8_t *switches_status)
     uint8_t reg_data = get_house_switch_statuses();
 
     // Note: this is backwards / being flipped because the switches are active low
-    switches_status[0] = !(reg_data & 0x01);
-    switches_status[1] = !(reg_data & 0x02);
-    switches_status[2] = !(reg_data & 0x04);
-    switches_status[3] = !(reg_data & 0x08);
-    switches_status[4] = !(reg_data & 0x10);
-    switches_status[5] = !(reg_data & 0x20);
-    switches_status[6] = !(reg_data & 0x40);
-    switches_status[7] = !(reg_data & 0x80);
+    switches_status[0] = (reg_data & 0x01);
+    switches_status[1] = (reg_data & 0x02);
+    switches_status[2] = (reg_data & 0x04);
+    switches_status[3] = (reg_data & 0x08);
+    switches_status[4] = (reg_data & 0x10);
+    switches_status[5] = (reg_data & 0x20);
+    switches_status[6] = (reg_data & 0x40);
+    switches_status[7] = (reg_data & 0x80);
 }

@@ -20,8 +20,8 @@ SemaphoreHandle_t mutex_current_light_status;
 // Disabled / Red LED
 #define DISABLED_PIN 7
 
-#define ENABLED_PIN_BACK 33
-#define DISABLED_PIN_BACK 34
+#define ENABLED_PIN_BACK 40
+#define DISABLED_PIN_BACK 41
 
 hue_house_status_t *house_status;
 uint8_t current_light_on_off_status[8] = {0};
@@ -51,7 +51,7 @@ void send_hue_update_request(void *params)
             group_id[36] = '\0';
             uint8_t status = request[36] == '1';
             ESP_LOGI("HUE_UPDATE", "Updating light status for group_id: %s to status: %d", group_id, status);
-            hue_update_room_light(group_id, status, hue_base_station_ip);
+            hue_update_room_light(group_id, status, hue_base_station_ip, hue_base_station_api_key);
         }
     }
 }
@@ -302,7 +302,7 @@ void app_main(void)
     // and perhaps an event comes in
     if (xSemaphoreTake(mutex_current_light_status, pdMS_TO_TICKS(5000)))
     {
-        hue_get_full_house_status(house_status, current_light_on_off_status, hue_base_station_ip);
+        hue_get_full_house_status(house_status, current_light_on_off_status, hue_base_station_ip, hue_base_station_api_key);
         set_house_lights_struct(current_light_on_off_status);
         xSemaphoreGive(mutex_current_light_status);
     }

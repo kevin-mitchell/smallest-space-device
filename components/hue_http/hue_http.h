@@ -55,7 +55,7 @@ struct room_pin_mapping
  */
 void hue_get_base_station_ip(char *hue_base_station_ip);
 
-void hue_get_full_house_status(hue_house_status_t *house_status, uint8_t *current_light_on_off_status, char *hue_base_station_ip);
+void hue_get_full_house_status(hue_house_status_t *house_status, uint8_t *current_light_on_off_status, char *hue_base_station_ip, char *hue_base_station_api_key);
 
 void hue_http_start(void *data);
 
@@ -66,7 +66,7 @@ void hue_http_start(void *data);
  *                       - true: Turn the light on.
  *                       - false: Turn the light off.
  */
-void hue_update_room_light(char *room_id, uint8_t target_state, char *hue_base_station_ip);
+void hue_update_room_light(char *room_id, uint8_t target_state, char *hue_base_station_ip, char *hue_base_station_api_key);
 
 /**
  * Fetch the settings from the remote config hosted on smallest.space
