@@ -57,6 +57,35 @@ void send_hue_update_request(void *params)
     }
 }
 
+/**
+ * The job of this function is to update the display status lights on the front / back of the main board.
+ * The idea is there may be multiple complex states, and depending on those states we may want to do different things.
+ */
+void display_status_lights(void *params)
+{
+    uint8_t toggle = 0;
+    while (true)
+    {
+        if (strcmp(hue_stream_config.hue_base_station_ip, "") == 0)
+        {
+            gpio_set_level(ENABLED_PIN, toggle);
+            gpio_set_level(DISABLED_PIN, toggle);
+            gpio_set_level(ENABLED_PIN_BACK, toggle);
+            gpio_set_level(DISABLED_PIN_BACK, toggle);
+        }
+        else
+        {
+            gpio_set_level(ENABLED_PIN, hue_stream_config.controled_enabled && hue_stream_config.light_display_enabled);
+            gpio_set_level(DISABLED_PIN, !hue_stream_config.controled_enabled && hue_stream_config.light_display_enabled);
+            gpio_set_level(ENABLED_PIN_BACK, hue_stream_config.controled_enabled);
+            gpio_set_level(DISABLED_PIN_BACK, !hue_stream_config.controled_enabled);
+        }
+        // if the display is disabled we'll assume we don't want to be annoying so we'll disable the front LEDs on the board
+        toggle = !toggle;
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
 void update_settings(void *params)
 {
     while (true)
@@ -69,13 +98,6 @@ void update_settings(void *params)
         // if the light display is turned off, we'll take this opportunity to disable the lights here
         if (xSemaphoreTake(mutex_current_light_status, 1000 / portTICK_PERIOD_MS))
         {
-
-            // if the display is disabled we'll assume we don't want to be annoying so we'll disable the front LEDs on the board
-            gpio_set_level(ENABLED_PIN, hue_stream_config.controled_enabled && hue_stream_config.light_display_enabled);
-            gpio_set_level(DISABLED_PIN, !hue_stream_config.controled_enabled && hue_stream_config.light_display_enabled);
-            gpio_set_level(ENABLED_PIN_BACK, hue_stream_config.controled_enabled);
-            gpio_set_level(DISABLED_PIN_BACK, !hue_stream_config.controled_enabled);
-
             if (!hue_stream_config.light_display_enabled)
             {
                 uint8_t temp_lights[8] = {0};
@@ -268,6 +290,10 @@ void app_main(void)
     set_house_lights(0xFF);
 
     wifi_connect_init();
+
+    // Note that if we add "_WITHOUT_ABORT" this will STOP retring in a loop to reconnect to the router.
+    // Currently (with `ESP_ERROR_CHECK`), it will retry forever. Whether this is "good" or "bad" is
+    // not entirely clear to me, I don't think the cost of retrying is great.
     ESP_ERROR_CHECK(wifi_connect_sta(WIFI_SSID, WIFI_PASSWORD, 10000));
 
     print_memory();
@@ -354,6 +380,7 @@ void app_main(void)
     }
 
     xTaskCreate(&update_settings, "update_settings", 4024, NULL, 5, NULL);
+    xTaskCreate(&display_status_lights, "display_status_lights", 2024, NULL, 5, NULL);
 
     while (true)
     {
