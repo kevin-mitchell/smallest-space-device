@@ -6,12 +6,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_http_client.h"
 #include "hue_data_parsers.h"
 
 #define TAG "HUE_HTTP"
 
 #define MAX_HTTP_RECV_BUFFER 500
+#define MICROSECONDS_BETWEEN_HUE_HUB_RECONNECT 900 * 1000000
 
 typedef struct
 {
@@ -29,10 +31,10 @@ esp_http_client_handle_t hue_put_client;
 struct room_pin_mapping config_room_pin_map[] = {
     {"living room", 0},
     {"kitchen", 1},
-    {"bathroom", 2},
+    {"window display", 2},
     {"stair room", 3},
     {"bedroom", 4},
-    {"window display", 5},
+    {"bathroom", 5},
     {"office", 6},
     {"status", 7},
 };
@@ -164,7 +166,7 @@ void hue_get_full_house_status(hue_house_status_t *house_status, uint8_t *curren
 
 void hue_get_base_station_ip(char *hue_base_station_ip)
 {
-
+    ESP_LOGI(TAG, "Getting Hue Base Station IP...");
     // get all of the rooms
     // https://192.168.11.10/clip/v2/resource/room
     // get all of the group_lights
@@ -182,7 +184,7 @@ void hue_get_base_station_ip(char *hue_base_station_ip)
     esp_err_t err = esp_http_client_perform(client);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "HTTP GET request failed while getting Hue IP address: %s", esp_err_to_name(err));
         return;
     }
 
@@ -345,31 +347,46 @@ void hue_http_start(void *data)
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    esp_http_client_set_header(client, "Accept", "text/event-stream");
-    esp_http_client_set_header(client, "hue-application-key", hue_stream_config.hue_base_station_api_key);
 
-    ESP_LOGI(TAG, "Opening Connection...");
+    uint64_t time_since_reconnect_to_hue = 0;
+    esp_timer_get_time();
+    int content_length;
+    int read_length;
 
-    esp_err_t err;
-    if ((err = esp_http_client_open(client, 0)) != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));
-        free(buffer);
-        return;
-    }
-
-    ESP_LOGI(TAG, "Open Connection...");
-
-    int content_length = esp_http_client_fetch_headers(client);
-    if (content_length > 0)
-    {
-        ESP_LOGW(TAG, "Unexpected Content-Length: %d", content_length);
-    }
-    int read_length = -1;
-
-    esp_http_client_set_timeout_ms(client, 50);
     while (true)
     {
+        if ((time_since_reconnect_to_hue + MICROSECONDS_BETWEEN_HUE_HUB_RECONNECT) < esp_timer_get_time())
+        {
+            ESP_LOGI(TAG, "If statement condition met, attempting to clean the create new connection");
+            esp_http_client_close(client);
+            esp_http_client_cleanup(client);
+            time_since_reconnect_to_hue = esp_timer_get_time();
+            client = esp_http_client_init(&config);
+            esp_http_client_set_header(client, "Accept", "text/event-stream");
+            esp_http_client_set_header(client, "hue-application-key", hue_stream_config.hue_base_station_api_key);
+
+            ESP_LOGI(TAG, "Opening Connection...");
+
+            esp_err_t err;
+            if ((err = esp_http_client_open(client, 0)) != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));
+                free(buffer);
+                return;
+            }
+
+            ESP_LOGI(TAG, "Open Connection...");
+
+            content_length = esp_http_client_fetch_headers(client);
+            if (content_length > 0)
+            {
+                ESP_LOGW(TAG, "Unexpected Content-Length: %d", content_length);
+            }
+            read_length = -1;
+
+            esp_http_client_set_timeout_ms(client, 50);
+        }
+
         read_length = esp_http_client_read(client, buffer, MAX_HTTP_RECV_BUFFER);
         if (read_length > 0)
         {

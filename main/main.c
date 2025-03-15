@@ -25,6 +25,7 @@ SemaphoreHandle_t mutex_current_light_status;
 
 hue_house_status_t *house_status;
 uint8_t current_light_on_off_status[8] = {0};
+uint8_t hue_get_ip_attempts = 0;
 char hue_base_station_ip[40] = {0};
 char hue_base_station_api_key[64] = {0};
 QueueHandle_t hue_update_light_request_queue;
@@ -217,6 +218,15 @@ void check_for_switch_updates(void *params)
     }
 }
 
+uint8_t is_hue_bridge_ip_set(char *candidate_ip)
+{
+    uint8_t result = strcmp(candidate_ip, "");
+    ESP_LOGI("MAIN", "Is Hue bridge IP set: %d", result);
+    uint8_t result2 = strlen(candidate_ip);
+    ESP_LOGI("MAIN", "Is Hue bridge IP set 2: %d", result2);
+    return strcmp(candidate_ip, "") != 0;
+}
+
 void app_main(void)
 {
     hue_stream_config.event_grouped_lights_updates_queue = xQueueCreate(10, sizeof(hue_grouped_lights_status_t));
@@ -266,14 +276,31 @@ void app_main(void)
     if (xSemaphoreTake(mutex_current_light_status, pdMS_TO_TICKS(5000)))
     {
         // TODO: uncomment this, but we are aggresively throttled
-        // hue_get_base_station_ip(hue_base_station_ip);
+        if (hue_get_ip_attempts < 3)
+        {
+            hue_get_ip_attempts += 1;
+            // hue_get_base_station_ip(hue_base_station_ip);
+        }
+        else
+        {
+            ESP_LOGE("MAIN", "Failed to get base station IP after 3 attempts");
+        }
+        // uncommenting this line will result
         strncpy(hue_base_station_ip, HUE_BASE_STATION_IP, 40);
+
+        // this is the hue base station api key, needs to be generated and saved in the secrets.h file.
+        // see the Hue API documentation for how to do this.
         strncpy(hue_base_station_api_key, HUE_API_KEY, 64);
-        ESP_LOGI("MAIN", "Hue base station IP..: %s", hue_base_station_ip);
-        ESP_LOGI("MAIN", "Hue base station API Key..: %s", hue_base_station_api_key);
+        ESP_LOGI("MAIN", "Hue base station IP..: [%s]", hue_base_station_ip);
+        ESP_LOGI("MAIN", "Hue base station API Key..: [%s]", hue_base_station_api_key);
         xSemaphoreGive(mutex_current_light_status);
     }
 
+    uint8_t hue_bridge_ip_set = is_hue_bridge_ip_set(hue_base_station_ip);
+    if (!hue_bridge_ip_set)
+    {
+        ESP_LOGI("MAIN", "Hue base station IP is NOT set");
+    }
     // Get the config from smallest.space
     if (xSemaphoreTake(mutex_current_light_status, pdMS_TO_TICKS(5000)))
     {
@@ -300,7 +327,7 @@ void app_main(void)
     // something might be split up across ticks. Basically even though this runs before the events are setup
     // I don't 100% know there isn't a chance that while waiting for a connection, the event stream started
     // and perhaps an event comes in
-    if (xSemaphoreTake(mutex_current_light_status, pdMS_TO_TICKS(5000)))
+    if (hue_bridge_ip_set && xSemaphoreTake(mutex_current_light_status, pdMS_TO_TICKS(5000)))
     {
         hue_get_full_house_status(house_status, current_light_on_off_status, hue_base_station_ip, hue_base_station_api_key);
         set_house_lights_struct(current_light_on_off_status);
@@ -317,11 +344,15 @@ void app_main(void)
 
     ESP_LOGI("MAIN", "We are at the end...");
 
-    // TODO: should this have a semaphore around it also?
-    xTaskCreate(&hue_http_start, "hue_http_start", 4096, &hue_stream_config, 5, NULL);
-    xTaskCreate(&update_lights_from_event, "update_lights_from_event", 4024, hue_stream_config.event_grouped_lights_updates_queue, 5, NULL);
-    xTaskCreate(&check_for_switch_updates, "check_for_switch_updates", 4024, NULL, 9, NULL);
-    xTaskCreate(&send_hue_update_request, "send_hue_update_request", 4024, NULL, 10, NULL);
+    if (hue_bridge_ip_set)
+    {
+        // TODO: should this have a semaphore around it also?
+        xTaskCreate(&hue_http_start, "hue_http_start", 4096, &hue_stream_config, 5, NULL);
+        xTaskCreate(&update_lights_from_event, "update_lights_from_event", 4024, hue_stream_config.event_grouped_lights_updates_queue, 5, NULL);
+        xTaskCreate(&check_for_switch_updates, "check_for_switch_updates", 4024, NULL, 9, NULL);
+        xTaskCreate(&send_hue_update_request, "send_hue_update_request", 4024, NULL, 10, NULL);
+    }
+
     xTaskCreate(&update_settings, "update_settings", 4024, NULL, 5, NULL);
 
     while (true)

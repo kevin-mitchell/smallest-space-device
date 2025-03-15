@@ -7,6 +7,7 @@ idf_component_register(
     REQUIRES
         "esp_netif"
         "esp_wifi"
+        "esp_timer"
         "log"
         "esp_http_client"
         "json"
