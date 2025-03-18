@@ -7,4 +7,4 @@ cmake_minimum_required(VERSION 3.16)
 # this is the demo project for quick connecting to wifi but we don't want to use this
 # set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/common_components/protocol_examples_common)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(helloworld1)
+project(smallest_space_firmware)
