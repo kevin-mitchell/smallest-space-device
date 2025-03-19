@@ -13,7 +13,7 @@
 #define TAG "HUE_HTTP"
 
 #define MAX_HTTP_RECV_BUFFER 500
-#define MICROSECONDS_BETWEEN_HUE_HUB_RECONNECT 900 * 1000000
+#define MICROSECONDS_BETWEEN_HUE_HUB_RECONNECT 1800 * 1000000
 
 typedef struct
 {
@@ -319,6 +319,7 @@ void hue_update_room_light(char *room_id, uint8_t target_state, char *hue_base_s
 
 void hue_http_start(void *data)
 {
+    ESP_LOGI(TAG, "Starting Hue HTTP Stream...");
     hue_stream_config_t hue_stream_config = *(hue_stream_config_t *)data;
     char *buffer = malloc(MAX_HTTP_RECV_BUFFER + 1);
     char *json_data = malloc(10000);
@@ -349,15 +350,16 @@ void hue_http_start(void *data)
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
     uint64_t time_since_reconnect_to_hue = 0;
-    esp_timer_get_time();
+
     int content_length;
     int read_length;
+    uint8_t initial_connect = 1;
 
     while (true)
     {
-        if ((time_since_reconnect_to_hue + MICROSECONDS_BETWEEN_HUE_HUB_RECONNECT) < esp_timer_get_time())
+        if (initial_connect || (time_since_reconnect_to_hue + MICROSECONDS_BETWEEN_HUE_HUB_RECONNECT) < esp_timer_get_time())
         {
-            ESP_LOGI(TAG, "If statement condition met, attempting to clean the create new connection");
+            initial_connect = 0;
             esp_http_client_close(client);
             esp_http_client_cleanup(client);
             time_since_reconnect_to_hue = esp_timer_get_time();

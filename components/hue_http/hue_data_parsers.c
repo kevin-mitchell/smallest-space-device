@@ -235,7 +235,12 @@ void parse_hue_event_update(char *http_event_data, hue_grouped_lights_status_t *
                         if (cJSON_IsObject(on_on))
                         {
                             setCount++;
-                            on = on_on->valueint;
+                            // TODO: figure out why this is here, if it needs to be here, etc
+                            // This at one point worked, but then I upgraded the IDF, and possibly as a result
+                            // cJSON updated, and one of those things meant that this no longer worked.
+                            // To be fair I'm not sure it hsould have ever worked, nor am I sure why I bothered
+                            // doing it at all because as far as I can tell the value isn't used past this point..
+                            // on = on_on->valueint;
                         }
                     }
                     if (cJSON_IsObject(dimming))
