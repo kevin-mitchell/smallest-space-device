@@ -302,16 +302,16 @@ void app_main(void)
     if (xSemaphoreTake(mutex_current_light_status, pdMS_TO_TICKS(5000)))
     {
         // TODO: uncomment this, but we are aggresively throttled
-        if (hue_get_ip_attempts < 3)
-        {
-            hue_get_ip_attempts += 1;
-            // hue_get_base_station_ip(hue_base_station_ip);
-        }
-        else
-        {
-            ESP_LOGE("MAIN", "Failed to get base station IP after 3 attempts");
-        }
-        // uncommenting this line will result
+        // if (hue_get_ip_attempts < 3)
+        // {
+        //     hue_get_ip_attempts += 1;
+        //     hue_get_base_station_ip(hue_base_station_ip);
+        // }
+        // else
+        // {
+        //     ESP_LOGE("MAIN", "Failed to get base station IP after 3 attempts");
+        // }
+        // uncommenting this line will result in the IP being set from the config from secrets.h
         strncpy(hue_base_station_ip, HUE_BASE_STATION_IP, 40);
 
         // this is the hue base station api key, needs to be generated and saved in the secrets.h file.

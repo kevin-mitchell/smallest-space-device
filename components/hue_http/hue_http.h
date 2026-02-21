@@ -1,7 +1,8 @@
 #ifndef HUE_HTTP_H
 #define HUE_HTTP_H
 
-#define MAX_ROOMS 10
+// This is critical, if you don't have enough rooms we'll clobber memory
+#define MAX_ROOMS 18
 
 typedef struct
 {

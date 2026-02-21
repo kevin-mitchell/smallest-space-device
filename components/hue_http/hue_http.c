@@ -87,7 +87,7 @@ void hue_get_full_house_status(hue_house_status_t *house_status, uint8_t *curren
     // TODO:     This should NOT be here and is very confusing. It's here just because I know this is called
     //           early, but it should be moved to some sort of init function
     esp_http_client_config_t esp_http_hue_put_client_config = {
-        .url = "http://127.0.0.1",
+        .url = "https://127.0.0.1",
         .method = HTTP_METHOD_PUT,
         .keep_alive_enable = true,
         .keep_alive_idle = 10};
@@ -156,6 +156,11 @@ void hue_get_full_house_status(hue_house_status_t *house_status, uint8_t *curren
 
     parse_hue_grouped_lights(http_data.buffer, house_status, current_light_on_off_status);
 
+    // Note: if this fails, I need to figure out why, I've added it because the docs say:
+    //
+    //      Closes the connection (if any) and frees up all the memory allocated to the HTTP client instance.
+    //      This must be the last function to be called after the completion of operations.
+    //
     esp_http_client_cleanup(client);
 
     if (http_data.buffer != NULL)
@@ -168,9 +173,9 @@ void hue_get_base_station_ip(char *hue_base_station_ip)
 {
     ESP_LOGI(TAG, "Getting Hue Base Station IP...");
     // get all of the rooms
-    // https://192.168.11.10/clip/v2/resource/room
+    // https://192.168.1.3/clip/v2/resource/room
     // get all of the group_lights
-    // https://192.168.11.10/clip/v2/resource/grouped_light
+    // https://192.168.1.3/clip/v2/resource/grouped_light
 
     http_data_t http_data = {0};
 
@@ -219,12 +224,12 @@ void smallest_space_get_remote_config(char *settings)
 
     char previousValue = settings[0];
     ESP_LOGI(TAG, "Previous value: %c", previousValue);
-    ESP_LOGI(TAG, "Control config before parsing: %d - %d", previousValue, settings[0]);
+    ESP_LOGI(TAG, "Control config before parsing: %c - %c", previousValue, settings[0]);
     parse_smallest_space_remote_config_response(http_data.buffer, settings);
-    ESP_LOGI(TAG, "Control values after before parsing: %d - %d", previousValue, settings[0]);
+    ESP_LOGI(TAG, "Control values after before parsing: %c - %c", previousValue, settings[0]);
     if (previousValue != settings[0] && settings[0] == '1')
     {
-        ESP_LOGI(TAG, "Control Switching to Enabled: %d", settings[0]);
+        ESP_LOGI(TAG, "Control Switching to Enabled: %c", settings[0]);
     }
 
     esp_http_client_cleanup(client);

@@ -42,6 +42,12 @@ void parse_hue_rooms(char *get_room_response, hue_house_status_t *house_status, 
 
     cJSON_ArrayForEach(room, rooms_data_array)
     {
+        if (house_status->room_count + 1 > MAX_ROOMS)
+        {
+            ESP_LOGE(TAG, "Too many rooms, increase MAX_ROOMS and recompile");
+            break;
+        }
+
         cJSON *room_id = cJSON_GetObjectItemCaseSensitive(room, "id");
         // TODO: children is an array of devices, most likely individual lights, do we need these?
         // cJSON *children = cJSON_GetObjectItemCaseSensitive(room, "children");
