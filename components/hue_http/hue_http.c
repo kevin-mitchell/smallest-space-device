@@ -31,12 +31,12 @@ esp_http_client_handle_t hue_put_client;
 struct room_pin_mapping config_room_pin_map[] = {
     {"living room", 0},
     {"kitchen", 1},
-    {"window display", 2},
-    {"stair room", 3},
-    {"bedroom", 4},
-    {"bathroom", 5},
-    {"office", 6},
-    {"status", 7},
+    {"dining room", 2},
+    {"upstairs bathr", 3},
+    {"guest bedroom", 4},
+    {"office", 5},
+    {"loft", 6},
+    {"porch", 7},
 };
 
 esp_err_t on_client_data(esp_http_client_event_t *evt)
